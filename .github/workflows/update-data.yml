@@ -1,14 +1,10 @@
-name: Update SMP/REC widget image
+name: Update REC/SMP data
 
 on:
   schedule:
-    - cron: "5 * * * *"
-  push:
-    paths:
-      - "smp.json"
-      - "rec.json"
-      - "scripts/**"
-  workflow_dispatch: {}
+    # 매일 한국시간 오전 9시 (UTC 00:00) 실행
+    - cron: "0 0 * * *"
+  workflow_dispatch: {} # 수동 실행 버튼도 사용 가능
 
 permissions:
   contents: write
@@ -19,28 +15,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install dependencies (Pillow + 한글 폰트)
+      - name: Install Python deps + Noto CJK fonts
         run: |
-          pip install --quiet pillow
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk
+          pip install Pillow
 
-      - name: Fetch latest SMP/REC data (키 없으면 자동으로 건너뜀)
+      - name: Fetch REC/SMP data via Seoul-region proxy
         env:
-          DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
+          PROXY_URL: ${{ secrets.PROXY_URL }}
+          PROXY_TOKEN: ${{ secrets.PROXY_TOKEN }}
         run: python3 scripts/fetch_data.py
 
-      - name: Render widget image
-        run: python3 scripts/render_image.py
+      - name: Render widget images (rec.json / smp.json -> png)
+        run: python3 scripts/render_widget.py
 
-      - name: Commit updated files (변경 있을 때만)
+      - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add smp.json rec.json smp_widget.png rec_widget.png
-          git diff --cached --quiet || git commit -m "chore: update SMP/REC widget"
+          git add rec.json smp.json rec_widget.png smp_widget.png
+          git diff --staged --quiet || git commit -m "chore: update REC/SMP data ($(date +'%Y-%m-%d'))"
           git push
