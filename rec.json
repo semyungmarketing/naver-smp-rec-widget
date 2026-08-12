@@ -1,10 +1,10 @@
 {
   "mode": "auto",
-  "updatedAt": "2026-07-30T17:20:00+09:00",
-  "bzDd": "20260806",
-  "landAvgPrc": 70422,
-  "clsPrc": 70400,
-  "landHgPrc": 70500,
-  "landLwPrc": 69900,
+  "updatedAt": "2026-08-12T03:15:53.202429+00:00",
+  "bzDd": "20170530",
+  "landAvgPrc": 130445.0,
+  "clsPrc": 128000.0,
+  "landHgPrc": 132000.0,
+  "landLwPrc": 128000.0,
   "unit": "원"
 }

@@ -1,9 +1,9 @@
 {
   "mode": "auto",
-  "updatedAt": "2026-08-30T10:00:00+09:00",
+  "updatedAt": "2026-08-12T03:15:50.908743+00:00",
   "areaLabel": "육지",
-  "price": "153.54",
+  "price": 119.55,
   "unit": "원/kWh",
-  "tradeDay": "20260810",
-  "tradHour": 9
+  "tradeDay": "20260812",
+  "tradHour": 24
 }
