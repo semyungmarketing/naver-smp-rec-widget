@@ -6,7 +6,8 @@ import sys
 import time
 import urllib.request
 import urllib.parse
-from datetime import datetime, timezone
+import xml.etree.ElementTree as ET
+from datetime import datetime, timezone, timedelta
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SMP_PATH = os.path.join(BASE_DIR, "smp.json")
@@ -32,6 +33,35 @@ def http_get(url, retries=3, timeout=25):
     raise last_err
 
 
+def parse_response(text):
+    """JSON이든 XML이든 둘 다 처리해서 (header_dict, items_list) 로 통일해서 반환"""
+    text = text.strip()
+
+    # 1) JSON 시도
+    if text.startswith("{"):
+        data = json.loads(text)
+        header = data.get("header") or (data.get("response") or {}).get("header") or {}
+        body = data.get("body") or (data.get("response") or {}).get("body") or {}
+        items = ((body.get("items") or {}).get("item"))
+        if isinstance(items, dict):
+            items = [items]
+        return header, (items or [])
+
+    # 2) XML 시도
+    root = ET.fromstring(text)
+    header_el = root.find("header")
+    result_code = header_el.findtext("resultCode") if header_el is not None else None
+    result_msg = header_el.findtext("resultMsg") if header_el is not None else None
+    header = {"resultCode": result_code, "resultMsg": result_msg}
+
+    items = []
+    for item_el in root.findall(".//items/item"):
+        d = {child.tag: (child.text or "").strip() for child in item_el}
+        items.append(d)
+
+    return header, items
+
+
 def fetch_smp():
     params = urllib.parse.urlencode({
         "type": "smp",
@@ -39,14 +69,10 @@ def fetch_smp():
     })
     url = f"{PROXY_URL}?{params}"
     text = http_get(url)
-    data = json.loads(text)
-    header = data.get("header") or (data.get("response") or {}).get("header")
+    header, items = parse_response(text)
+
     if not header or header.get("resultCode") != "00":
         raise RuntimeError(f"SMP API 오류: {header.get('resultMsg') if header else text[:200]}")
-    body = data.get("body") or (data.get("response") or {}).get("body") or {}
-    items = ((body.get("items") or {}).get("item"))
-    if isinstance(items, dict):
-        items = [items]
     if not items:
         raise RuntimeError("SMP API: item 데이터 없음")
 
@@ -79,53 +105,57 @@ def fetch_smp():
 
 
 def fetch_rec():
-    params = urllib.parse.urlencode({
-        "type": "rec",
-        "token": PROXY_TOKEN,
-    })
-    url = f"{PROXY_URL}?{params}"
-    text = http_get(url)
-    data = json.loads(text)
-    header = data.get("header") or (data.get("response") or {}).get("header")
-    if not header or header.get("resultCode") != "00":
-        raise RuntimeError(f"REC API 오류: {header.get('resultMsg') if header else text[:200]}")
-    body = data.get("body") or (data.get("response") or {}).get("body") or {}
-    items = ((body.get("items") or {}).get("item"))
-    if isinstance(items, dict):
-        items = [items]
-    if not items:
-        raise RuntimeError("REC API: item 데이터 없음")
-
     def to_num(v):
         try:
             return float(v)
         except (TypeError, ValueError):
             return None
 
-    # numOfRows로 여러 건을 받아온 뒤, bzDd(거래일)가 가장 최신인 항목을 직접 선택
-    # (API가 오름차순으로 줄 수도 있어 items[0]만 믿으면 옛날 데이터가 걸릴 수 있음)
-    latest_item = None
-    latest_key = None
-    for it in items:
-        bz = (it.get("bzDd") or "").strip()
-        if not bz:
+    # bzDd(거래일)는 필수 파라미터. REC 현물시장은 매일 안 열리므로(주 2회 정도),
+    # 오늘부터 최대 14일 전까지 하루씩 거슬러 올라가며 데이터가 있는 날을 찾는다.
+    today = datetime.now(timezone(timedelta(hours=9))).date()  # KST 기준 오늘
+    last_error = None
+
+    for delta in range(0, 15):
+        target_date = today - timedelta(days=delta)
+        bz_dd = target_date.strftime("%Y%m%d")
+
+        params = urllib.parse.urlencode({
+            "type": "rec",
+            "token": PROXY_TOKEN,
+            "date": bz_dd,
+        })
+        url = f"{PROXY_URL}?{params}"
+
+        try:
+            text = http_get(url, retries=1)
+            header, items = parse_response(text)
+        except Exception as e:
+            last_error = e
             continue
-        if latest_key is None or bz > latest_key:
-            latest_key = bz
-            latest_item = it
 
-    item = latest_item or items[0]
+        if not header or header.get("resultCode") != "00":
+            last_error = RuntimeError(header.get("resultMsg") if header else "unknown error")
+            continue
 
-    return {
-        "mode": "auto",
-        "updatedAt": datetime.now(timezone.utc).isoformat(),
-        "bzDd": item.get("bzDd"),
-        "landAvgPrc": to_num(item.get("landAvgPrc")),
-        "clsPrc": to_num(item.get("clsPrc")),
-        "landHgPrc": to_num(item.get("landHgPrc")),
-        "landLwPrc": to_num(item.get("landLwPrc")),
-        "unit": "원",
-    }
+        if not items:
+            # 그 날짜엔 장이 안 열렸음 -> 하루 더 이전으로
+            continue
+
+        item = items[0]
+        print(f"  (REC: {bz_dd} 데이터 사용)")
+        return {
+            "mode": "auto",
+            "updatedAt": datetime.now(timezone.utc).isoformat(),
+            "bzDd": item.get("bzDd") or bz_dd,
+            "landAvgPrc": to_num(item.get("landAvgPrc")),
+            "clsPrc": to_num(item.get("clsPrc")),
+            "landHgPrc": to_num(item.get("landHgPrc")),
+            "landLwPrc": to_num(item.get("landLwPrc")),
+            "unit": "원",
+        }
+
+    raise RuntimeError(f"REC API: 최근 14일 내 거래일 데이터를 찾지 못함 (마지막 오류: {last_error})")
 
 
 def update_file(path, fetcher, label):
