@@ -91,8 +91,9 @@ def fetch_rec():
         raise RuntimeError(f"REC API 오류: {header.get('resultMsg') if header else text[:200]}")
     body = data.get("body") or (data.get("response") or {}).get("body") or {}
     items = ((body.get("items") or {}).get("item"))
-    item = items[0] if isinstance(items, list) else items
-    if not item:
+    if isinstance(items, dict):
+        items = [items]
+    if not items:
         raise RuntimeError("REC API: item 데이터 없음")
 
     def to_num(v):
@@ -100,6 +101,20 @@ def fetch_rec():
             return float(v)
         except (TypeError, ValueError):
             return None
+
+    # numOfRows로 여러 건을 받아온 뒤, bzDd(거래일)가 가장 최신인 항목을 직접 선택
+    # (API가 오름차순으로 줄 수도 있어 items[0]만 믿으면 옛날 데이터가 걸릴 수 있음)
+    latest_item = None
+    latest_key = None
+    for it in items:
+        bz = (it.get("bzDd") or "").strip()
+        if not bz:
+            continue
+        if latest_key is None or bz > latest_key:
+            latest_key = bz
+            latest_item = it
+
+    item = latest_item or items[0]
 
     return {
         "mode": "auto",
