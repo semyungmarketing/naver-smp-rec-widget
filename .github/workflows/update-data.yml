@@ -1,40 +1,41 @@
 name: Update REC/SMP data
- 
+
 on:
   schedule:
-    # 매시 정각(0분)에 실행 — GitHub Actions cron은 UTC 기준이며, 정각이라 KST/UTC 둘 다 매시 0분에 해당
-    - cron: "0 * * * *"
+    # 매시 7분에 실행 — 정각(0분)은 전 세계 저장소가 몰려서 GitHub가 누락시키는 경우가 많음.
+    # 애매한 분(7분)으로 잡아서 혼잡을 피함
+    - cron: "7 * * * *"
   workflow_dispatch: {} # 수동 실행 버튼도 사용 가능
- 
+
 permissions:
   contents: write
- 
+
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
- 
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
- 
+
       - name: Install Python deps + Noto CJK fonts
         run: |
           sudo apt-get update
           sudo apt-get install -y fonts-noto-cjk
           pip install Pillow
- 
+
       - name: Fetch REC/SMP data via Seoul-region proxy
         env:
           PROXY_URL: ${{ secrets.PROXY_URL }}
           PROXY_TOKEN: ${{ secrets.PROXY_TOKEN }}
         run: python3 scripts/fetch_data.py
- 
+
       - name: Render widget images (rec.json / smp.json -> png)
         run: python3 scripts/render_widget.py
- 
+
       - name: Commit changes
         run: |
           git config user.name "github-actions[bot]"
