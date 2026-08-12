@@ -7,13 +7,13 @@ import time
 import urllib.request
 import urllib.parse
 from datetime import datetime, timezone
- 
+
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SMP_PATH = os.path.join(BASE_DIR, "smp.json")
 REC_PATH = os.path.join(BASE_DIR, "rec.json")
 SERVICE_KEY = os.environ.get("DATA_GO_KR_KEY")
- 
- 
+
+
 def http_get(url, retries=3, timeout=25):
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     last_err = None
@@ -27,8 +27,8 @@ def http_get(url, retries=3, timeout=25):
             if attempt < retries:
                 time.sleep(3)
     raise last_err
- 
- 
+
+
 def fetch_smp():
     params = urllib.parse.urlencode({
         "serviceKey": SERVICE_KEY,
@@ -36,7 +36,7 @@ def fetch_smp():
         "numOfRows": "200",
         "dataType": "json",
     })
-    url = f"FCY7aRVIDWUt6a+3mREpXJWPYLWAF3J3AC/GrhQ6dMCndQebFIS06W4v6vdpiPQ25KpKBaEomRkGtZKkejs9Ng=="
+    url = f"https://apis.data.go.kr/B552115/SmpWithForecastDemand/getSmpWithForecastDemand?{params}"
     text = http_get(url)
     data = json.loads(text)
     header = data.get("header") or (data.get("response") or {}).get("header")
@@ -48,10 +48,10 @@ def fetch_smp():
         items = [items]
     if not items:
         raise RuntimeError("SMP API: item 데이터 없음")
- 
+
     land_items = [it for it in items if "육지" in (it.get("areaName") or "")]
     pool = land_items or items
- 
+
     latest = None
     for it in pool:
         try:
@@ -65,7 +65,7 @@ def fetch_smp():
             latest = {"key": key, "hour": hour, "smp": smp, "date": date_str}
     if latest is None:
         raise RuntimeError("SMP API: 유효한 시간대 데이터 없음")
- 
+
     return {
         "mode": "auto",
         "updatedAt": datetime.now(timezone.utc).isoformat(),
@@ -75,8 +75,8 @@ def fetch_smp():
         "tradeDay": latest["date"],
         "tradHour": latest["hour"],
     }
- 
- 
+
+
 def fetch_rec():
     params = urllib.parse.urlencode({
         "serviceKey": SERVICE_KEY,
@@ -84,7 +84,7 @@ def fetch_rec():
         "numOfRows": "1",
         "dataType": "json",
     })
-    url = f"FCY7aRVIDWUt6a+3mREpXJWPYLWAF3J3AC/GrhQ6dMCndQebFIS06W4v6vdpiPQ25KpKBaEomRkGtZKkejs9Ng=="
+    url = f"https://apis.data.go.kr/B552115/RecMarketInfo2/getRecMarketInfo2?{params}"
     text = http_get(url)
     data = json.loads(text)
     header = data.get("header") or (data.get("response") or {}).get("header")
@@ -95,13 +95,13 @@ def fetch_rec():
     item = items[0] if isinstance(items, list) else items
     if not item:
         raise RuntimeError("REC API: item 데이터 없음")
- 
+
     def to_num(v):
         try:
             return float(v)
         except (TypeError, ValueError):
             return None
- 
+
     return {
         "mode": "auto",
         "updatedAt": datetime.now(timezone.utc).isoformat(),
@@ -112,8 +112,8 @@ def fetch_rec():
         "landLwPrc": to_num(item.get("landLwPrc")),
         "unit": "원",
     }
- 
- 
+
+
 def update_file(path, fetcher, label):
     try:
         data = fetcher()
@@ -123,16 +123,15 @@ def update_file(path, fetcher, label):
         print(f"{label} 갱신 완료: {json.dumps(data, ensure_ascii=False)}")
     except Exception as e:
         print(f"{label} 갱신 실패: {e}", file=sys.stderr)
- 
- 
+
+
 def main():
     if not SERVICE_KEY:
         print("DATA_GO_KR_KEY가 아직 설정되지 않았습니다. 자동 갱신을 건너뜁니다 (수동 모드 유지).")
         return
     update_file(SMP_PATH, fetch_smp, "SMP")
     update_file(REC_PATH, fetch_rec, "REC")
- 
- 
+
+
 if __name__ == "__main__":
     main()
- 
