@@ -36,7 +36,7 @@ def fetch_smp():
         "numOfRows": "200",
         "dataType": "json",
     })
-    url = f"https://apis.data.go.kr/B552115/SmpWithForecastDemand/getSmpWithForecastDemand?{params}"
+    url = f"FCY7aRVIDWUt6a+3mREpXJWPYLWAF3J3AC/GrhQ6dMCndQebFIS06W4v6vdpiPQ25KpKBaEomRkGtZKkejs9Ng=="
     text = http_get(url)
     data = json.loads(text)
     header = data.get("header") or (data.get("response") or {}).get("header")
@@ -84,7 +84,7 @@ def fetch_rec():
         "numOfRows": "1",
         "dataType": "json",
     })
-    url = f"https://apis.data.go.kr/B552115/RecMarketInfo2/getRecMarketInfo2?{params}"
+    url = f"FCY7aRVIDWUt6a+3mREpXJWPYLWAF3J3AC/GrhQ6dMCndQebFIS06W4v6vdpiPQ25KpKBaEomRkGtZKkejs9Ng=="
     text = http_get(url)
     data = json.loads(text)
     header = data.get("header") or (data.get("response") or {}).get("header")
