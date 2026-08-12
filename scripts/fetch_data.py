@@ -86,7 +86,8 @@ def fetch_smp():
     today_str = now_kst.strftime("%Y%m%d")
     cutoff_hour = now_kst.hour  # 0~23. 예: 12시대(12:00~13:00 진행중)면 hour=12까지가 확정분
 
-    latest = None
+    # 오늘 날짜 + 확정된(지나간) 시간대만 모아서 평균/최고/최저/최신시각을 계산
+    today_values = []  # [(hour, smp), ...]
     for it in pool:
         try:
             hour = int(it.get("hour"))
@@ -94,28 +95,28 @@ def fetch_smp():
         except (TypeError, ValueError):
             continue
         date_str = (it.get("date") or "").strip()
-        key = (date_str, hour)
 
-        # 오늘 날짜인데 아직 안 지난 시간대(미래/예측값)는 제외
-        if date_str == today_str and hour > cutoff_hour:
+        if date_str != today_str:
             continue
-        # 오늘보다 미래 날짜 데이터도 당연히 제외 (혹시 모를 방어)
-        if date_str > today_str:
-            continue
+        if hour > cutoff_hour:
+            continue  # 아직 안 지난 시간대(예측값)는 제외
 
-        if latest is None or key > latest["key"]:
-            latest = {"key": key, "hour": hour, "smp": smp, "date": date_str}
-    if latest is None:
-        raise RuntimeError("SMP API: 유효한(확정된) 시간대 데이터 없음")
+        today_values.append((hour, smp))
+
+    if not today_values:
+        raise RuntimeError("SMP API: 오늘 확정된 시간대 데이터가 아직 없음")
+
+    latest_hour = max(h for h, _ in today_values)
+    avg_price = sum(v for _, v in today_values) / len(today_values)
 
     return {
         "mode": "auto",
         "updatedAt": datetime.now(timezone.utc).isoformat(),
         "areaLabel": "육지",
-        "price": latest["smp"],
+        "price": round(avg_price, 2),
         "unit": "원/kWh",
-        "tradeDay": latest["date"],
-        "tradHour": latest["hour"],
+        "tradeDay": today_str,
+        "tradHour": latest_hour,
     }
 
 
