@@ -79,6 +79,13 @@ def fetch_smp():
     land_items = [it for it in items if "육지" in (it.get("areaName") or "")]
     pool = land_items or items
 
+    # 현재(KST) 시각 기준으로, 아직 지나지 않은 미래 시간대(예측값)는 제외한다.
+    # API의 hour 필드는 1~24이며, hour=N은 "N-1시~N시" 구간을 의미하므로
+    # 실제로 확정된(이미 지난) 시간은 hour <= 현재 시(0~23) 인 경우까지다.
+    now_kst = datetime.now(timezone(timedelta(hours=9)))
+    today_str = now_kst.strftime("%Y%m%d")
+    cutoff_hour = now_kst.hour  # 0~23. 예: 12시대(12:00~13:00 진행중)면 hour=12까지가 확정분
+
     latest = None
     for it in pool:
         try:
@@ -88,10 +95,18 @@ def fetch_smp():
             continue
         date_str = (it.get("date") or "").strip()
         key = (date_str, hour)
+
+        # 오늘 날짜인데 아직 안 지난 시간대(미래/예측값)는 제외
+        if date_str == today_str and hour > cutoff_hour:
+            continue
+        # 오늘보다 미래 날짜 데이터도 당연히 제외 (혹시 모를 방어)
+        if date_str > today_str:
+            continue
+
         if latest is None or key > latest["key"]:
             latest = {"key": key, "hour": hour, "smp": smp, "date": date_str}
     if latest is None:
-        raise RuntimeError("SMP API: 유효한 시간대 데이터 없음")
+        raise RuntimeError("SMP API: 유효한(확정된) 시간대 데이터 없음")
 
     return {
         "mode": "auto",
