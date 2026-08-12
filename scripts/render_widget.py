@@ -118,7 +118,7 @@ def render_smp(smp):
         )
     else:
         meta = "아직 값이 없어요"
-    draw_card("SMP (육지)", smp.get("mode") or "manual", price, unit, meta, smp.get("updatedAt"), SMP_OUT)
+    draw_card("SMP 단순평균(육지)", smp.get("mode") or "manual", price, unit, meta, smp.get("updatedAt"), SMP_OUT)
 
 
 def render_rec(rec):
