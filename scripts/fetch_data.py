@@ -79,14 +79,12 @@ def fetch_smp():
     land_items = [it for it in items if "육지" in (it.get("areaName") or "")]
     pool = land_items or items
 
-    # 현재(KST) 시각 기준으로, 아직 지나지 않은 미래 시간대(예측값)는 제외한다.
-    # API의 hour 필드는 1~24이며, hour=N은 "N-1시~N시" 구간을 의미하므로
-    # 실제로 확정된(이미 지난) 시간은 hour <= 현재 시(0~23) 인 경우까지다.
+    # 한국 SMP는 "하루전시장"이라 오늘 24시간치 가격이 전날 저녁에 이미 전부 확정돼서 나온다.
+    # 즉 API가 주는 오늘 날짜의 값은 예측치가 아니라 이미 확정된 최종값이므로,
+    # "아직 안 지난 시간이라 제외"할 필요가 없다 -> 오늘 날짜로 들어온 시간대는 있는 대로 전부 사용.
     now_kst = datetime.now(timezone(timedelta(hours=9)))
     today_str = now_kst.strftime("%Y%m%d")
-    cutoff_hour = now_kst.hour  # 0~23. 예: 12시대(12:00~13:00 진행중)면 hour=12까지가 확정분
 
-    # 오늘 날짜 + 확정된(지나간) 시간대만 모아서 가중평균(KPX 공식) 계산
     # KPX 공식: 가중평균SMP = Σ(SMPi × 수요i) / Σ(수요i)
     # mlfd 필드가 "육지 수요예측(MW)"으로 확인됨 (mlfd + jlfd = slfd 관계로 검증됨)
     today_values = []  # [(hour, smp, demand), ...]
@@ -101,13 +99,26 @@ def fetch_smp():
 
         if date_str != today_str:
             continue
-        if hour > cutoff_hour:
-            continue  # 아직 안 지난 시간대(예측값)는 제외
 
         today_values.append((hour, smp, demand))
 
+    # 혹시 발표 시점 전이라 오늘 데이터가 아직 하나도 없다면 (드문 경우), 가장 최근 날짜로 폴백
     if not today_values:
-        raise RuntimeError("SMP API: 오늘 확정된 시간대 데이터가 아직 없음")
+        dated = {}
+        for it in pool:
+            try:
+                hour = int(it.get("hour"))
+                smp = float(it.get("smp"))
+                demand = float(it.get("mlfd"))
+            except (TypeError, ValueError):
+                continue
+            date_str = (it.get("date") or "").strip()
+            dated.setdefault(date_str, []).append((hour, smp, demand))
+        if not dated:
+            raise RuntimeError("SMP API: 유효한 데이터 없음")
+        latest_date = max(dated.keys())
+        today_str = latest_date
+        today_values = dated[latest_date]
 
     latest_hour = max(h for h, _, _ in today_values)
     total_demand = sum(d for _, _, d in today_values)
