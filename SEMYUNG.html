@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>세명 회사소개서</title>
+<meta name="description" content="(주)세명 그룹 회사소개서 — 세명티이씨 · 세명이노베이션 · 에스엠에너지솔루션">
+<meta name="theme-color" content="#161d33">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="세명 회사소개서">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+:root {
+  --stage: #161d33;
+  --stage-2: #1c2541;
+  --ink: #e9edf6;
+  --muted: #9aa6c2;
+  --accent: #f0a23a;
+  --line: rgba(233, 237, 246, .16);
+  --ui: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+  --page-ar: 0.7075;           /* A4 width / height */
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: radial-gradient(120% 90% at 50% 45%, var(--stage-2) 0%, var(--stage) 72%) fixed;
+  background-color: var(--stage);
+  color: var(--ink);
+  font-family: var(--ui);
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* horizontal swipe track: native scroll + snap, so touch works everywhere */
+.track {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+.track::-webkit-scrollbar { display: none; }
+.slide {
+  flex: 0 0 100%;
+  width: 100%;
+  height: 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: grid;
+  place-items: center;
+  padding: calc(env(safe-area-inset-top, 0px) + 20px) max(20px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 72px) max(20px, env(safe-area-inset-left, 0px));
+}
+.book {
+  --ar: var(--page-ar);
+  aspect-ratio: var(--ar);
+  height: min(100%, calc((100vw - 40px) / var(--ar)));
+  max-width: 100%;
+  display: flex;
+  position: relative;
+  box-shadow: 0 20px 44px rgba(0, 0, 0, .5);
+  background: #fff;
+}
+.book.double { --ar: calc(var(--page-ar) * 2); }
+.book img, .book .blank {
+  display: block;
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+  background: #fff;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+}
+.book.double img, .book.double .blank { width: 50%; }
+.book.double::after {           /* spine shading */
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0;
+  left: calc(50% - 40px);
+  width: 80px;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(0,0,0,0) 0%, rgba(0,0,0,.10) 40%, rgba(0,0,0,.22) 50%, rgba(0,0,0,.10) 60%, rgba(0,0,0,0) 100%);
+}
+
+/* side arrows */
+.nav {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: rgba(22, 29, 51, .72);
+  color: var(--ink);
+  display: grid; place-items: center;
+  cursor: pointer;
+  z-index: 5;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+.nav svg { width: 24px; height: 24px; fill: currentColor; }
+.nav.prev { left: max(10px, env(safe-area-inset-left, 0px)); }
+.nav.next { right: max(10px, env(safe-area-inset-right, 0px)); }
+.nav[disabled] { opacity: 0; pointer-events: none; }
+
+/* bottom bar */
+.bar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  height: calc(60px + env(safe-area-inset-bottom, 0px));
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(16px, env(safe-area-inset-left, 0px));
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  z-index: 5;
+}
+.pill {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: rgba(22, 29, 51, .72);
+  color: var(--ink);
+  font: 600 14px/1 var(--ui);
+  display: inline-flex; align-items: center; gap: 8px;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.pill .muted { color: var(--muted); font-weight: 500; }
+.pill svg { width: 16px; height: 16px; fill: currentColor; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.progress { position: fixed; left: 0; right: 0; bottom: 0; height: 3px; z-index: 6; pointer-events: none; }
+.progress i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .25s; }
+
+/* swipe hint */
+.hint {
+  position: fixed; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  padding: 14px 20px;
+  border-radius: 14px;
+  background: rgba(22, 29, 51, .86);
+  color: var(--ink);
+  font: 600 15px/1.4 var(--ui);
+  z-index: 7;
+  pointer-events: none;
+  transition: opacity .5s;
+  white-space: nowrap;
+}
+.hint.off { opacity: 0; }
+
+/* page overview */
+.grid-wrap {
+  position: fixed; inset: 0;
+  background: rgba(14, 19, 34, .96);
+  z-index: 10;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: calc(env(safe-area-inset-top, 0px) + 20px) max(20px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 24px) max(20px, env(safe-area-inset-left, 0px));
+}
+.grid-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.grid-head h2 { margin: 0; font: 700 18px/1.2 var(--ui); }
+.thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 16px; }
+.thumb { appearance: none; border: 0; padding: 0; background: none; color: var(--muted); cursor: pointer; font: 500 12px/1 var(--ui); text-align: center; }
+.thumb img { display: block; width: 100%; aspect-ratio: var(--page-ar); object-fit: cover; background: #fff; border-radius: 3px; margin-bottom: 6px; outline: 2px solid transparent; outline-offset: 2px; }
+.thumb.on img { outline-color: var(--accent); }
+.thumb.on { color: var(--ink); }
+@media (max-width: 600px) { .nav { width: 44px; height: 44px; } }
+@media (prefers-reduced-motion: reduce) { .hint, .progress i { transition: none; } }
+</style>
+</head>
+<body>
+<div class="track" id="track" aria-label="세명 회사소개서" tabindex="0"></div>
+
+<button class="nav prev" id="prev" type="button" aria-label="이전 쪽">
+  <svg viewBox="0 0 24 24"><path d="M15.4 7.4 14 6l-6 6 6 6 1.4-1.4L10.8 12z"/></svg>
+</button>
+<button class="nav next" id="next" type="button" aria-label="다음 쪽">
+  <svg viewBox="0 0 24 24"><path d="M8.6 16.6 10 18l6-6-6-6-1.4 1.4 4.6 4.6z"/></svg>
+</button>
+
+<div class="bar">
+  <button class="pill" id="first" type="button" aria-label="표지로">
+    <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zM9.5 12 18 6v12z"/></svg>
+  </button>
+  <button class="pill" id="count" type="button" aria-label="전체 쪽 보기"><span id="cur">1</span><span class="muted">/ 23</span></button>
+  <button class="pill" id="all" type="button">
+    <svg viewBox="0 0 24 24"><path d="M4 4h7v7H4zm9 0h7v7h-7zM4 13h7v7H4zm9 0h7v7h-7z"/></svg>전체 보기
+  </button>
+</div>
+<div class="progress" aria-hidden="true"><i id="prog"></i></div>
+<div class="hint" id="hint">좌우로 밀어서 넘기세요</div>
+
+<div class="grid-wrap" id="grid" hidden>
+  <div class="grid-head">
+    <h2>전체 쪽</h2>
+    <button class="pill" id="close" type="button">닫기</button>
+  </div>
+  <div class="thumbs" id="thumbs"></div>
+</div>
+
+<script>
+(function () {
+  var N = 23;
+  var track = document.getElementById('track');
+  var cur = document.getElementById('cur');
+  var prog = document.getElementById('prog');
+  var prevBtn = document.getElementById('prev');
+  var nextBtn = document.getElementById('next');
+  var slides = [];          // each slide = array of page numbers (0 = blank)
+  var index = 0;            // current slide
+  var page = 1;             // first page shown, survives orientation changes
+  var mode = '';
+
+  function src(n) { return 'pages/p-' + (n < 10 ? '0' + n : n) + '.jpg'; }
+  function isSpread() { return window.innerWidth > window.innerHeight && window.innerWidth >= 700; }
+
+  function plan(spread) {
+    if (!spread) { var s = []; for (var i = 1; i <= N; i++) s.push([i]); return s; }
+    var out = [[1]];
+    for (var p = 2; p <= N - 1; p += 2) out.push(p + 1 <= N - 1 ? [p, p + 1] : [p, 0]);
+    out.push([N]);
+    return out;
+  }
+
+  function build() {
+    var spread = isSpread();
+    var m = spread ? 'spread' : 'single';
+    if (m === mode) { jump(index, false); return; }
+    mode = m;
+    slides = plan(spread);
+    var html = '';
+    slides.forEach(function (pages, i) {
+      var dbl = pages.length === 2;
+      html += '<section class="slide" aria-label="' + label(pages) + '쪽"><div class="book' + (dbl ? ' double' : '') + '">';
+      pages.forEach(function (n) {
+        html += n ? '<img src="' + src(n) + '" alt="회사소개서 ' + n + '쪽" draggable="false"' + (Math.abs(i - index) > 2 ? ' loading="lazy"' : '') + '>'
+                  : '<div class="blank" aria-hidden="true"></div>';
+      });
+      html += '</div></section>';
+    });
+    track.innerHTML = html;
+    index = slideOf(page);
+    jump(index, false);
+  }
+
+  function slideOf(p) {
+    for (var i = 0; i < slides.length; i++) if (slides[i].indexOf(p) !== -1) return i;
+    return 0;
+  }
+  function label(pages) {
+    var real = pages.filter(Boolean);
+    return real.length === 2 ? real[0] + '–' + real[1] : String(real[0]);
+  }
+
+  function update() {
+    var pages = slides[index] || [1];
+    page = pages[0] || page;
+    cur.textContent = label(pages);
+    var last = pages.filter(Boolean).slice(-1)[0];
+    prog.style.width = (last / N * 100) + '%';
+    prevBtn.disabled = index === 0;
+    nextBtn.disabled = index === slides.length - 1;
+  }
+
+  function jump(i, smooth) {
+    index = Math.max(0, Math.min(slides.length - 1, i));
+    var x = index * track.clientWidth;
+    if (smooth && 'scrollBehavior' in document.documentElement.style) track.scrollTo({ left: x, behavior: 'smooth' });
+    else track.scrollLeft = x;
+    update();
+  }
+
+  var raf = null;
+  track.addEventListener('scroll', function () {
+    if (raf) return;
+    raf = requestAnimationFrame(function () {
+      raf = null;
+      var i = Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
+      if (i !== index) { index = i; update(); hideHint(); }
+    });
+  }, { passive: true });
+
+  prevBtn.addEventListener('click', function () { jump(index - 1, true); hideHint(); });
+  nextBtn.addEventListener('click', function () { jump(index + 1, true); hideHint(); });
+  document.getElementById('first').addEventListener('click', function () { jump(0, true); });
+  document.addEventListener('keydown', function (e) {
+    if (!grid.hidden) { if (e.key === 'Escape') closeGrid(); return; }
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); jump(index + 1, true); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); jump(index - 1, true); }
+    else if (e.key === 'Home') jump(0, true);
+    else if (e.key === 'End') jump(slides.length - 1, true);
+  });
+
+  var resizeTimer = null;
+  window.addEventListener('resize', function () {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(build, 120);
+  });
+  window.addEventListener('orientationchange', function () { setTimeout(build, 250); });
+
+  // page overview
+  var grid = document.getElementById('grid');
+  var thumbs = document.getElementById('thumbs');
+  var th = '';
+  for (var n = 1; n <= N; n++) th += '<button class="thumb" type="button" data-p="' + n + '"><img src="' + src(n) + '" alt="" loading="lazy">' + n + '</button>';
+  thumbs.innerHTML = th;
+  function openGrid() {
+    var shown = (slides[index] || []).filter(Boolean);
+    Array.prototype.forEach.call(thumbs.children, function (b) {
+      b.classList.toggle('on', shown.indexOf(+b.getAttribute('data-p')) !== -1);
+    });
+    grid.hidden = false;
+  }
+  function closeGrid() { grid.hidden = true; track.focus({ preventScroll: true }); }
+  document.getElementById('all').addEventListener('click', openGrid);
+  document.getElementById('count').addEventListener('click', openGrid);
+  document.getElementById('close').addEventListener('click', closeGrid);
+  thumbs.addEventListener('click', function (e) {
+    var b = e.target.closest('.thumb');
+    if (!b) return;
+    page = +b.getAttribute('data-p');
+    closeGrid();
+    jump(slideOf(page), false);
+  });
+
+  var hint = document.getElementById('hint');
+  var hinted = false;
+  function hideHint() { if (!hinted) { hinted = true; hint.classList.add('off'); } }
+  setTimeout(hideHint, 2800);
+
+  build();
+})();
+</script>
+</body>
+</html>
