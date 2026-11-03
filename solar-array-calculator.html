@@ -73,6 +73,7 @@
   .cross-section-empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12.5px;text-align:center;padding:0 8px;}
   @media (max-width:900px){ .map-row{flex-direction:column;} .diagram-row{flex-direction:column;} .cross-section-panel{height:560px;} .cross-section-panel-lg{height:760px;} }
   .map-toolbar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+  .map-toolbar .coord-input{width:118px;padding:10px 8px;border:1px solid var(--line);background:#ffffff;color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:13px;}
   .map-toolbar input[type=text]{flex:1;min-width:180px;padding:10px 12px;border:1px solid var(--line);background:#ffffff;color:var(--ink);font-family:'IBM Plex Sans KR',sans-serif;font-size:13.5px;}
   .btn{padding:10px 16px;border:1px solid var(--line);background:#1f3157;color:#fff;font-family:'IBM Plex Mono',monospace;font-size:12.5px;letter-spacing:0.02em;cursor:pointer;transition:background .15s, transform .05s;}
   .btn:hover{background:#28407a;}
@@ -204,12 +205,15 @@
       <div class="map-toolbar">
         <input type="text" id="addressInput" placeholder="주소를 입력하세요 (예: 서울특별시 중구 세종대로 110)">
         <button class="btn amber" id="searchBtn">위치 검색</button>
+        <input type="number" id="addrLat" class="coord-input" step="0.000001" placeholder="위도" title="위도 (직접 입력 후 Enter로 이동)">
+        <input type="number" id="addrLng" class="coord-input" step="0.000001" placeholder="경도" title="경도 (직접 입력 후 Enter로 이동)">
         <button class="btn secondary" id="clearDrawBtn">전체 구역 지우기</button>
         <button class="btn secondary" id="panelEditBtn">🖱 패널 개별 추가/삭제 편집</button>
         <button class="btn secondary" id="mapFullscreenBtn">배치도 크게 보기 ⤢</button>
         <button class="btn secondary" id="exportCoordsBtn">🧭 구역 좌표 내보내기</button>
         <button class="btn secondary" id="ridgeDrawBtn">지붕 단면 그리기 (시작점→[용마루]→끝점)</button>
         <button class="btn secondary" id="widthRidgeDrawBtn">폭 방향 단면 그리기 (서쪽끝→[용마루]→동쪽끝)</button></div>
+      <div class="field-note" id="addrHint">주소를 입력하고 Enter 또는 「위치 검색」을 누르면 위도·경도가 표시되고 그 지점에 핀이 찍힙니다. 위도·경도를 직접 입력해도 이동합니다.</div>
       <div class="field-note" id="panelEditNote" style="display:none;">패널 편집 중: 선택된 구역(<b id="panelEditZoneLabel">-</b>) 안에서 <b>배치된 모듈을 클릭하면 삭제</b>, <b>빈 칸을 클릭하면 그 자리에 모듈을 추가</b>합니다. 빈 칸을 클릭하면 클릭한 정확한 지점이 아니라 <b>가장 가까운 기존 줄(행·열 격자)에 자동으로 맞춰(스냅)</b> 추가되므로, 대략 그 근처만 클릭해도 옆 모듈과 줄이 딱 맞게 들어갑니다(근처에 기존 모듈이 전혀 없으면 클릭한 지점 그대로 추가됩니다). 수동으로 추가한 모듈은 개수·용량 계산에는 포함되지만, 다리 높이·지붕 파고듦 등 구조 계산에는 반영되지 않습니다(참고용). 편집을 마치려면 버튼을 다시 눌러주세요.</div>
       <div class="map-row">
         <div id="map"></div>
@@ -418,11 +422,8 @@
  * layout-engine(배치 엔진) → inverter-sizing(인버터 추천) → app-ui(지도·UI·runCalc).
  * 버전 변경 이력은 CHANGELOG.md 참고. */
 const MODULES = {
-  hanwha645: { label: "한화 645W", pmax: 645, voc: 56.88, isc: 13.85, vmp: 48.78, imp: 13.22, betaVoc: -0.25, width: 1.134, height: 2.465 },
-  hanwha590domestic: { label: "한화 국산 셀 590W", pmax: 590, voc: 53.60, isc: 13.74, vmp: 44.96, imp: 13.12, betaVoc: -0.27, width: 1.134, height: 2.462 },
-  hyundai645os: { label: "현대 국산 셀 645W", pmax: 645, voc: 57.61, isc: 14.14, vmp: 47.58, imp: 13.56, betaVoc: -0.25, width: 1.134, height: 2.465 },
-  longi655: { label: "론지 655W", pmax: 655, voc: 49.72, isc: 16.54, vmp: 40.98, imp: 15.86, betaVoc: -0.20, width: 1.134, height: 2.382 },
-  trina720: { label: "트리나솔라 720W", pmax: 720, voc: 49.40, isc: 18.49, vmp: 41.30, imp: 17.44, betaVoc: -0.24, width: 1.303, height: 2.384 }
+  hyundai645os: { label: "현대 1등급 645W (HiS-T645NJ-OS)", pmax: 645, voc: 57.61, isc: 14.14, vmp: 47.58, imp: 13.56, betaVoc: -0.25, width: 1.134, height: 2.465 },
+  hanwha650g2r: { label: "한화 2등급 650W (Q.TRON XL-G2R.9/BFG HJ)", pmax: 650, voc: 56.98, isc: 13.88, vmp: 48.98, imp: 13.27, betaVoc: -0.25, width: 1.134, height: 2.465 }
 };
 const INVERTERS = {
   delta110: { label: "델타 110kW", ratedKw: 110, mpptMin: 500, mpptMax: 800, sysMaxV: 1000, mpptCount: 8, mpptMaxCurrent: 39.8 },
@@ -540,7 +541,7 @@ let zones = [];
 let zoneCounter = 0;
 const ZONE_LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const DEFAULT_ZONE_CONFIG = {
-  moduleKey: 'hanwha645', orientation: 'portrait', roofType: 'flat', alignMode: 'roofline', manualAngleDeg: 0,
+  moduleKey: 'hyundai645os', orientation: 'portrait', roofType: 'flat', alignMode: 'roofline', manualAngleDeg: 0,
   setback: 0.6, tilt: 15, shadeAngle: 23, tierMode: 'disc',
   discTierInput: null, maxLegHeight: 5, frontLeg: 0.8, tmin: -20, tmax: 40,
   pitchedAngle1: 12, pitchedAngle2: -12, frontFlush: false, simpleSection: false,
@@ -1358,15 +1359,32 @@ async function geocodeKakao(q){
   });
 }
 // 지도 타일에 쓰는 VWorld 키로 VWorld 주소검색 API를 1순위로 시도하고(도로명 실패 시 지번), 실패하면 Nominatim으로 대체합니다.
+// VWorld 주소검색 API는 fetch(CORS)로는 브라우저가 막으므로, 세명_시공지도와 같이 JSONP(스크립트 태그) + domain 파라미터로 호출합니다.
+function vworldJsonp(url){
+  return new Promise((resolve, reject) => {
+    const cb = 'vwcb' + Date.now() + Math.floor(Math.random()*1e6);
+    const sc = document.createElement('script');
+    const done = () => { clearTimeout(t); try{ delete window[cb]; }catch(e){ window[cb] = undefined; } sc.remove(); };
+    const t = setTimeout(() => { done(); reject(new Error('timeout')); }, 12000);
+    window[cb] = d => { done(); resolve(d); };
+    sc.onerror = () => { done(); reject(new Error('load')); };
+    sc.src = url + '&callback=' + cb;
+    document.head.appendChild(sc);
+  });
+}
+// 호수·층·괄호 등 좌표 검색에 방해되는 꼬리를 정리합니다.
+function cleanAddr(a){ return String(a||'').replace(/\([^)]*\)/g,' ').replace(/\s*외\s*\d+\s*필지.*$/,'').replace(/,.*$/,'').replace(/\s+\d+층.*$/,'').replace(/\s+\d+동(\s+\d+호)?\s*$/,'').replace(/\s+/g,' ').trim(); }
 async function geocodeVWorld(q){
+  const addr = cleanAddr(q) || q;
+  const dom = 'https://semyungmarketing.github.io';
   for(const type of ['road','parcel']){
     try{
-      const url = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(q)}&refine=true&simple=false&format=json&type=${type}&key=${VWORLD_KEY}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      const point = data && data.response && data.response.status === 'OK' && data.response.result && data.response.result.point;
+      const url = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&refine=true&simple=true&format=json&type=${type}&key=${encodeURIComponent(VWORLD_KEY)}&domain=${encodeURIComponent(dom)}&address=${encodeURIComponent(addr)}`;
+      const data = await vworldJsonp(url);
+      const r = data && data.response;
+      const point = r && r.status === 'OK' && r.result && r.result.point;
       if(point && point.x && point.y){ return { lat: parseFloat(point.y), lon: parseFloat(point.x) }; }
-    } catch(err){ /* 이 타입 실패 시 다음 타입(또는 Nominatim)으로 진행 */ }
+    } catch(err){ /* 이 타입 실패 시 다음 타입(또는 다른 지오코더)으로 진행 */ }
   }
   return null;
 }
@@ -1379,17 +1397,48 @@ async function geocodeNominatim(q){
   return null;
 }
 // Nominatim 오차는 지역마다 달라 고정 보정값으로는 해결되지 않으므로, VWorld 우선 시도 → 실패 시 Nominatim 결과를 그대로 씁니다.
-document.getElementById('searchBtn').onclick = async function(){
+// 검색 결과 지점 표시: 위도·경도 칸을 채우고, 그 지점에 핀(클릭 불가)을 찍어 정확한 위치를 보여줍니다.
+let searchPin = null;
+function showSearchPoint(lat, lon, zoom){
+  document.getElementById('addrLat').value = lat.toFixed(6);
+  document.getElementById('addrLng').value = lon.toFixed(6);
+  if(searchPin){ searchPin.setLatLng([lat, lon]); }
+  else { searchPin = L.marker([lat, lon], {interactive:false, keyboard:false}).addTo(map); }
+  map.setView([lat, lon], zoom || map.getZoom());
+}
+async function runAddressSearch(){
+  const btn = document.getElementById('searchBtn');
+  const hintEl = document.getElementById('addrHint');
   const q = document.getElementById('addressInput').value.trim();
   if(!q) return;
-  const btn = this; btn.textContent = '검색중...';
+  btn.textContent = '검색중...'; hintEl.textContent = '좌표를 찾는 중…';
   try{
-    const hit = (await geocodeKakao(q)) || (await geocodeVWorld(q)) || (await geocodeNominatim(q));
-    if(hit){ map.setView([hit.lat, hit.lon], 20); }
-    else { alert('주소를 찾지 못했습니다. 더 구체적인 주소로 다시 검색하거나, 지도를 직접 이동해 위치를 맞춰주세요.'); }
-  } catch(err){ alert('주소 검색 서비스에 접속하지 못했습니다. 지도를 직접 이동/확대해 위치를 맞춘 뒤 지붕 외곽선을 그려주세요.'); }
+    const hit = (await geocodeVWorld(q)) || (await geocodeKakao(q)) || (await geocodeNominatim(q));
+    if(hit){
+      showSearchPoint(hit.lat, hit.lon, 20);
+      hintEl.textContent = `찾았습니다: 위도 ${hit.lat.toFixed(6)}, 경도 ${hit.lon.toFixed(6)}`;
+    } else {
+      hintEl.textContent = '주소로 좌표를 찾지 못했습니다. 더 구체적인 주소로 다시 검색하거나, 위도·경도를 직접 입력해 주세요.';
+    }
+  } catch(err){ hintEl.textContent = '주소 검색 서비스에 접속하지 못했습니다. 위도·경도를 직접 입력하거나 지도를 직접 이동해 주세요.'; }
   btn.textContent = '위치 검색';
-};
+}
+document.getElementById('searchBtn').onclick = runAddressSearch;
+document.getElementById('addressInput').addEventListener('change', runAddressSearch); // 입력칸을 벗어나면 자동 검색·배치
+document.getElementById('addressInput').addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); runAddressSearch(); } });
+// 위도·경도를 직접 입력하고 Enter(또는 칸을 벗어날 때)하면 그 지점으로 이동합니다.
+function moveToTypedCoord(){
+  const lat = parseFloat(document.getElementById('addrLat').value);
+  const lon = parseFloat(document.getElementById('addrLng').value);
+  if(!isFinite(lat) || !isFinite(lon) || lat < 32 || lat > 40 || lon < 123 || lon > 133) return;
+  showSearchPoint(lat, lon, Math.max(map.getZoom(), 19));
+  document.getElementById('addrHint').textContent = `입력한 좌표로 이동: 위도 ${lat.toFixed(6)}, 경도 ${lon.toFixed(6)}`;
+}
+['addrLat','addrLng'].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); moveToTypedCoord(); } });
+  el.addEventListener('change', moveToTypedCoord);
+});
 const moduleSelect = document.getElementById('moduleSelect');
 Object.entries(MODULES).forEach(([k,m])=>{ const opt = document.createElement('option'); opt.value=k; opt.textContent=m.label; moduleSelect.appendChild(opt); });
 let inverterFleet = [{ id: 1, modelKey: Object.keys(INVERTERS)[0], count: 1 }];
@@ -3574,7 +3623,60 @@ function runCalc(){
     document.getElementById('warnBox').style.display='none';
   }
 }
+
+
+// v124. 부지진단 연동용 계산 API. 부지진단이 숨긴 iframe(calculator/?headless=1)으로 이 계산기를 띄워
+// 건물 윤곽을 넣고 이 계산기의 배치 엔진 결과(장수·용량·모듈 위치)를 그대로 받아갑니다. 화면 동작에는 영향 없음.
+const SMS_HEADLESS = /[?&]headless=1/.test(location.search);
+if(SMS_HEADLESS){ map.eachLayer(l => { if(l instanceof L.TileLayer) map.removeLayer(l); }); }
+window.SMS_LAYOUT = function(rings, opts){
+  opts = opts || {};
+  document.getElementById('clearDrawBtn').onclick();
+  const saved = Object.assign({}, DEFAULT_ZONE_CONFIG);
+  try{
+    if(opts.module && MODULES[opts.module]){ DEFAULT_ZONE_CONFIG.moduleKey = opts.module; moduleSelect.value = opts.module; }
+    ['orientation','tilt','shadeAngle','setback'].forEach(k => { if(opts[k] !== undefined && opts[k] !== null) DEFAULT_ZONE_CONFIG[k] = opts[k]; });
+    const perZone = [];
+    rings.forEach(ring => {
+      const pts = ring.map(p => L.latLng(p[0], p[1]));
+      if(pts.length > 3 && pts[0].equals(pts[pts.length-1])) pts.pop();
+      if(pts.length < 3){ perZone.push(0); return; }
+      const before = layoutLayer.getLayers().length;
+      map.fire(L.Draw.Event.CREATED, { layer: L.polygon(pts), layerType: 'polygon' });
+      perZone.push(null);
+    });
+    const rects = layoutLayer.getLayers().map(l => l.getLatLngs()[0].map(p => [p.lat, p.lng]));
+    const m = MODULES[DEFAULT_ZONE_CONFIG.moduleKey];
+    return { ok: true, count: rects.length, kw: rects.length * m.pmax / 1000, rects, module: DEFAULT_ZONE_CONFIG.moduleKey, version: 'v124', warn: document.getElementById('warnBox').style.display === 'block' ? document.getElementById('warnBox').textContent : '' };
+  } finally {
+    Object.assign(DEFAULT_ZONE_CONFIG, saved);
+  }
+};
+// v124. 부지진단에서 넘겨받은 건물 윤곽을 구역으로 불러옵니다(같은 사이트 localStorage 'sms.handoff', 1시간 안의 것만, 한 번 쓰고 삭제).
+(function loadHandoff(){
+  if(SMS_HEADLESS) return;
+  try{
+    const raw = localStorage.getItem('sms.handoff'); if(!raw) return;
+    localStorage.removeItem('sms.handoff');
+    const h = JSON.parse(raw);
+    if(!h || !Array.isArray(h.roofs) || !h.roofs.length || Date.now() - (h.t||0) > 3600*1000) return;
+    if(h.module && MODULES[h.module]){ DEFAULT_ZONE_CONFIG.moduleKey = h.module; moduleSelect.value = h.module; renderModuleChips(); }
+    ['orientation','tilt','shadeAngle','setback'].forEach(k => { if(h[k] !== undefined && h[k] !== null) DEFAULT_ZONE_CONFIG[k] = h[k]; });
+    h.roofs.forEach(ring => {
+      const pts = ring.map(p => L.latLng(p[0], p[1]));
+      if(pts.length > 3 && pts[0].equals(pts[pts.length-1])) pts.pop();
+      if(pts.length < 3) return;
+      map.fire(L.Draw.Event.CREATED, { layer: L.polygon(pts), layerType: 'polygon' });
+    });
+    if(drawnItems.getLayers().length) map.fitBounds(drawnItems.getBounds(), { maxZoom: 20, padding: [30,30] });
+    if(h.addr){ const ai = document.getElementById('addressInput'); if(ai) ai.value = h.addr; }
+    if(h.center){ const la = document.getElementById('addrLat'), ln = document.getElementById('addrLng'); if(la) la.value = h.center[0].toFixed(6); if(ln) ln.value = h.center[1].toFixed(6); }
+    const hint = document.getElementById('addrHint');
+    if(hint) hint.textContent = '부지진단에서 넘겨받은 건물 ' + h.roofs.length + '개를 구역으로 불러왔습니다' + (h.addr ? ' (' + h.addr + ')' : '') + '. 구역별 지붕 유형·각도·용마루를 확인한 뒤 계산 결과를 보세요.';
+  }catch(err){ console.warn('부지진단 연동 실패', err); }
+})();
 (function () {
+  if (/[?&]headless=1/.test(location.search)) return;
   var SHOW_DELAY_MS = 30000;
   var $modal = document.getElementById('inquiryModal');
   var $close = document.getElementById('modalClose');
